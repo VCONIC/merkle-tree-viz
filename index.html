@@ -3,7 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Merkle Tree Visualizer</title>
+  <title>Merkle Tree Visualizer — Interactive SHA-256 Hash Tree</title>
+
+  <!-- Primary SEO -->
+  <meta name="description" content="Interactive Merkle Tree visualizer with real SHA-256 hashing. Add data step by step, explore inclusion proofs, inspect how each hash is derived, and understand how blockchain and certificate transparency work — right in your browser.">
+  <meta name="keywords" content="merkle tree, merkle tree visualizer, SHA-256, hash tree, blockchain, inclusion proof, merkle proof, cryptography, data structure, interactive, educational, certificate transparency, web crypto">
+  <meta name="author" content="Pavan Kumar, Strolid Inc.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://vconic.github.io/merkle-tree-viz/">
+
+  <!-- Open Graph (Facebook, LinkedIn, Slack, Discord unfurls) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://vconic.github.io/merkle-tree-viz/">
+  <meta property="og:title" content="Merkle Tree Visualizer — Interactive SHA-256 Hash Tree">
+  <meta property="og:description" content="Add data nodes one by one and watch a real Merkle tree build in real time. Explore SHA-256 hashes, inclusion proofs, and hash derivation — all in your browser with no install needed.">
+  <meta property="og:site_name" content="Vconic by Strolid Inc.">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Merkle Tree Visualizer — Interactive SHA-256 Hash Tree">
+  <meta name="twitter:description" content="Add data nodes one by one and watch a real Merkle tree build in real time. Explore SHA-256 hashes, inclusion proofs, and hash derivation — all in your browser with no install needed.">
+  <meta name="twitter:site" content="@strolid">
+
+  <!-- Structured data (JSON-LD) for Google & GPT crawlers -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Merkle Tree Visualizer",
+    "url": "https://vconic.github.io/merkle-tree-viz/",
+    "description": "Interactive Merkle Tree visualizer with real SHA-256 hashing. Add data step by step, explore inclusion proofs, and understand how blockchain and certificate transparency work — right in your browser.",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Any",
+    "browserRequirements": "Requires a modern browser with Web Crypto API support",
+    "author": {
+      "@type": "Person",
+      "name": "Pavan Kumar",
+      "email": "pavan.kumar@strolid.com",
+      "worksFor": {
+        "@type": "Organization",
+        "name": "Strolid Inc.",
+        "url": "https://strolid.com"
+      }
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Vconic",
+      "url": "https://vconic.github.io"
+    },
+    "keywords": ["merkle tree", "SHA-256", "hash tree", "blockchain", "inclusion proof", "merkle proof", "cryptography", "interactive visualization"],
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
