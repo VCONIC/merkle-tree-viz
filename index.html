@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merkle Tree Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:           #080c14;
+      --surface:      #0d1526;
+      --surface2:     #131d35;
+      --border:       #1c2a40;
+      --border-mid:   #243550;
+      --text:         #d4e2f4;
+      --text-dim:     #8ba8c8;
+      --text-bright:  #f0f6ff;
+
+      --c-root-fill:  #3730a3;
+      --c-root-str:   #818cf8;
+      --c-int-fill:   #1e3a5f;
+      --c-int-str:    #3b82f6;
+      --c-leaf-fill:  #0f4c75;
+      --c-leaf-str:   #0ea5e9;
+      --c-hl-fill:    #92400e;
+      --c-hl-str:     #f59e0b;
+      --c-path-fill:  #713f12;
+      --c-path-str:   #d97706;
+      --c-sib-fill:   #14532d;
+      --c-sib-str:    #22c55e;
+
+      --edge:         #1e2d4a;
+      --edge-hl:      #f59e0b;
+
+      --accent:       #0ea5e9;
+      --accent2:      #818cf8;
+      --accent3:      #22c55e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle, rgba(30,45,74,0.55) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────────── */
+    .header {
+      padding: 18px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(8,12,20,.97) 0%, rgba(13,21,38,.97) 100%);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: -0.02em;
+    }
+
+    .header-badge {
+      font-size: 0.58rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .header-sub {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+    }
+
+    /* ── CONTROLS ───────────────────────────────────────────────── */
+    .controls {
+      padding: 12px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-label {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      white-space: nowrap;
+      margin-right: 2px;
+    }
+
+    .chip-group {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s, color 0.1s, box-shadow 0.1s;
+      letter-spacing: 0.04em;
+    }
+
+    .chip:hover:not(:disabled) {
+      background: var(--c-int-fill);
+      border-color: var(--c-int-str);
+      color: #93c5fd;
+    }
+
+    .chip.used {
+      background: transparent;
+      color: #293849;
+      border-color: #16202e;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .chip.next-up {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(14,165,233,.25), 0 0 10px rgba(14,165,233,.15);
+      animation: pulse-chip 2s ease infinite;
+    }
+
+    @keyframes pulse-chip {
+      0%,100% { box-shadow: 0 0 0 1px rgba(14,165,233,.25), 0 0 10px rgba(14,165,233,.15); }
+      50%      { box-shadow: 0 0 0 1px rgba(14,165,233,.55), 0 0 16px rgba(14,165,233,.35); }
+    }
+
+    .vdiv {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 5px 14px;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.1s;
+      letter-spacing: 0.04em;
+      border: none;
+    }
+
+    .btn-add {
+      background: var(--accent);
+      color: #000d1a;
+    }
+
+    .btn-add:hover:not(:disabled) { background: #38bdf8; }
+
+    .btn-add:disabled {
+      background: var(--surface2);
+      color: var(--text-dim);
+      cursor: not-allowed;
+    }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border-mid);
+    }
+
+    .btn-clear:hover { color: #f87171; border-color: #f87171; }
+
+    .btn-history {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border-mid);
+      font-size: 0.8rem;
+      padding: 4px 10px;
+    }
+
+    .btn-history:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--accent2);
+      background: rgba(129,140,248,.08);
+    }
+
+    .btn-history:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .step-counter {
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      min-width: 52px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .step-counter .step-cur { color: var(--text); font-weight: 700; }
+
+    /* ── STATS ──────────────────────────────────────────────────── */
+    .stats-bar {
+      padding: 7px 28px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(13,21,38,.7);
+      display: none;
+      gap: 20px;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      align-items: center;
+    }
+
+    .stat {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .stat-k { color: var(--text-dim); text-transform: uppercase; }
+    .stat-v { color: var(--text); font-weight: 600; }
+    .stat-v.mono { color: var(--accent2); font-size: 0.58rem; }
+
+    /* ── TREE SECTION ───────────────────────────────────────────── */
+    .tree-section {
+      padding: 28px;
+      overflow-x: auto;
+      overflow-y: visible;
+      min-height: 260px;
+    }
+
+    .tree-wrap {
+      display: inline-block;
+      min-width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    #treeSvg { overflow: visible; display: block; }
+
+    /* ── EMPTY STATE ─────────────────────────────────────────────── */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 32px;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .empty-glyph {
+      font-size: 2.4rem;
+      line-height: 1;
+      opacity: 0.2;
+      filter: grayscale(1);
+      letter-spacing: -3px;
+      font-weight: 300;
+    }
+
+    .empty-h {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .empty-p {
+      font-size: 0.65rem;
+      color: #6a8aaa;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── SVG NODE ANIMATION ─────────────────────────────────────── */
+    @keyframes nodeReveal {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    .node-g {
+      animation: nodeReveal 0.28s ease both;
+    }
+
+    /* ── RECEIPTS ────────────────────────────────────────────────── */
+    .receipts {
+      border-top: 1px solid var(--border);
+      padding: 20px 28px 40px;
+      background: var(--surface);
+      display: none;
+    }
+
+    .receipts-hd {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .receipts-title {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .receipts-hint {
+      font-size: 0.58rem;
+      color: #6a8aaa;
+      font-style: italic;
+    }
+
+    .receipt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .receipt-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 9px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: default;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .receipt-row:hover,
+    .receipt-row.active {
+      border-color: var(--c-hl-str);
+      background: rgba(20,12,5,.5);
+    }
+
+    .r-data {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .r-arrow {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    .hchip {
+      font-family: inherit;
+      font-size: 0.62rem;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .hchip.leaf  { border-color: var(--c-leaf-str); color: #7dd3fc; }
+    .hchip.root  { border-color: var(--c-root-str); color: #c4b5fd; }
+
+    .hchip.sib {
+      border-color: var(--c-sib-str);
+      color: #86efac;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .hchip.sib:hover {
+      background: var(--c-sib-fill);
+      color: #bbf7d0;
+    }
+
+    .hchip.sib.hl-sib {
+      background: var(--c-sib-fill);
+      color: #bbf7d0;
+      box-shadow: 0 0 6px rgba(34,197,94,.3);
+    }
+
+    .proof-dir {
+      font-size: 0.58rem;
+      color: #6a8aaa;
+      font-style: italic;
+    }
+
+    .proof-step {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── LIGHT MODE ─────────────────────────────────────────────── */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:           #f1f5fb;
+        --surface:      #e8eef8;
+        --surface2:     #dde5f4;
+        --border:       #c2cedf;
+        --border-mid:   #adbcd4;
+        --text:         #1e2d44;
+        --text-dim:     #526a88;
+        --text-bright:  #0f1a2a;
+
+        --c-root-fill:  #ede9fe;
+        --c-root-str:   #7c3aed;
+        --c-int-fill:   #dbeafe;
+        --c-int-str:    #2563eb;
+        --c-leaf-fill:  #e0f2fe;
+        --c-leaf-str:   #0284c7;
+        --c-hl-fill:    #fef3c7;
+        --c-hl-str:     #d97706;
+        --c-path-fill:  #fde68a;
+        --c-path-str:   #b45309;
+        --c-sib-fill:   #dcfce7;
+        --c-sib-str:    #16a34a;
+
+        --edge:         #c2cedf;
+        --edge-hl:      #d97706;
+
+        --accent:       #0284c7;
+        --accent2:      #7c3aed;
+        --accent3:      #16a34a;
+      }
+
+      body {
+        background-image: radial-gradient(circle, rgba(180,200,230,0.6) 1px, transparent 1px);
+      }
+
+      .header {
+        background: linear-gradient(180deg, rgba(241,245,251,.98) 0%, rgba(232,238,248,.98) 100%);
+      }
+
+      .sidebar { background: #edf2fb; }
+      .sidebar.open { border-left-color: #c2cedf; }
+      .sidebar-hd { border-bottom-color: #c2cedf; }
+
+      /* receipt chips */
+      .hchip.leaf { color: #0369a1; }
+      .hchip.root { color: #6d28d9; }
+      .hchip.sib  { color: #15803d; }
+      .hchip.sib:hover, .hchip.sib.hl-sib { background: #dcfce7; color: #14532d; }
+
+      /* inspector history chips */
+      .hc-chip.lh  { border-color: #0284c7; color: #0369a1; }
+      .hc-chip.sh  { border-color: #16a34a; color: #15803d; }
+      .hc-chip.rh  { border-color: #7c3aed; color: #6d28d9; }
+      .hc-chip.rhs { border-color: #d97706; color: #b45309; }
+
+      /* inspector deriv chips */
+      .df-chip.data   { border-color: #0284c7; color: #0369a1; }
+      .df-chip.child  { border-color: #2563eb; color: #1d4ed8; }
+      .df-chip.dup    { border-color: #2563eb; color: #1d4ed8; }
+      .df-chip.result { border-color: #d97706; color: #b45309; }
+
+      /* receipt section */
+      .receipt-row { background: #dde5f4; border-color: #c2cedf; }
+      .receipt-row:hover, .receipt-row.active { background: #fef3c7; border-color: #d97706; }
+
+      /* hist rows */
+      .hist-row { background: #dde5f4; border-color: #c2cedf; }
+      .hist-row.is-current { background: #ede9fe; border-color: #7c3aed; }
+
+      /* deriv box */
+      .deriv-box { background: #dde5f4; border-color: #c2cedf; }
+
+      /* stats bar */
+      .stats-bar { background: rgba(232,238,248,.9); }
+    }
+
+    /* ── FOOTER ─────────────────────────────────────────────────── */
+    .footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      padding: 10px 28px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(6px);
+    }
+
+    .footer-brand {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: 0.06em;
+    }
+
+    .footer-brand span {
+      color: var(--accent);
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover { text-decoration: underline; }
+
+    /* ── SCROLLBAR ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a5070; }
+
+    /* ── PAGE LAYOUT (content + sidebar side-by-side) ──────────── */
+    .page-layout {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .main-content {
+      flex: 1;
+      min-width: 0;   /* let flex item shrink below content size */
+    }
+
+    /* ── SIDEBAR INSPECTOR ──────────────────────────────────────── */
+    .sidebar {
+      flex-shrink: 0;
+      width: 0;
+      overflow: hidden;
+      background: #06090f;
+      border-left: none;
+      transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                  border-color 0.32s;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .sidebar.open {
+      width: 520px;
+      border-left: 1px solid var(--border);
+    }
+
+    .sidebar-hd {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      gap: 10px;
+    }
+
+    .sidebar-hd-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .sidebar-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px 32px;
+    }
+
+    .sidebar-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 9px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      transition: all 0.1s;
+    }
+
+    .sidebar-close:hover { color: var(--text); border-color: var(--border-mid); }
+
+    /* Node badge & id (inside sidebar header) */
+    .insp-title {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .insp-badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .insp-badge.leaf     { background: #0f4c75; color: #7dd3fc; border: 1px solid #0ea5e9; }
+    .insp-badge.internal { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
+    .insp-badge.root     { background: #3730a3; color: #c4b5fd; border: 1px solid #818cf8; }
+
+    .insp-node-id {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
+    /* derivation box */
+    .deriv-box {
+      padding: 11px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 14px;
+    }
+
+    .deriv-label {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 8px;
+    }
+
+    .deriv-formula {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .df-fn     { color: #e879f9; font-size: 0.72rem; }
+    .df-paren  { color: var(--text-dim); font-size: 0.72rem; }
+    .df-eq     { color: var(--text-dim); font-size: 0.72rem; }
+    .df-cat    { color: #64748b; font-size: 0.72rem; letter-spacing: 0.05em; }
+    .df-note   { font-size: 0.58rem; color: #64748b; font-style: italic; }
+
+    .df-chip {
+      font-family: inherit;
+      font-size: 0.62rem;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(0,0,0,.4);
+      white-space: nowrap;
+    }
+    .df-chip.data    { border: 1px solid #0ea5e9; color: #38bdf8; }
+    .df-chip.child   { border: 1px solid #3b82f6; color: #93c5fd; }
+    .df-chip.dup     { border: 1px dashed #3b82f6; color: #93c5fd; }
+    .df-chip.result  { border: 1px solid #f59e0b; color: #fde68a; }
+
+    /* receipt history */
+    .hist-section { display: none; }
+
+    .hist-label {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 10px;
+    }
+
+    .hist-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .hist-row {
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .hist-row.is-current {
+      border-color: var(--accent2);
+      background: rgba(55,48,163,.12);
+    }
+
+    .hist-step-lbl {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+    }
+
+    .hist-row.is-current .hist-step-lbl { color: var(--accent2); }
+
+    .hist-chain {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .hc-data  { font-size: 0.75rem; font-weight: 700; color: var(--accent); }
+    .hc-arrow { font-size: 0.6rem;  color: var(--text-dim); }
+    .hc-dir   { font-size: 0.56rem; color: #6a8aaa; font-style: italic; }
+
+    .hc-chip {
+      font-family: inherit;
+      font-size: 0.6rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(0,0,0,.35);
+      white-space: nowrap;
+    }
+    .hc-chip.lh  { border: 1px solid #0ea5e9; color: #7dd3fc; }
+    .hc-chip.sh  { border: 1px solid #22c55e; color: #86efac; }
+    .hc-chip.rh  { border: 1px solid #818cf8; color: #c4b5fd; }
+    .hc-chip.rhs { border: 1px solid #f59e0b; color: #fde68a; } /* root when single */
+
+    /* history hover states */
+    .hc-chip.gone    { border-style: dashed; opacity: 0.45; text-decoration: line-through; }
+    .hc-chip.present { box-shadow: 0 0 0 1px currentColor; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Merkle Tree Visualizer</h1>
+      <span class="header-badge">SHA-256</span>
+    </div>
+    <span class="header-sub">hash-linked · tamper-evident · append-only</span>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="controls-row">
+      <span class="ctrl-label">Data</span>
+      <div class="chip-group" id="chipsLetters"></div>
+      <div class="vdiv"></div>
+      <div class="chip-group" id="chipsNumbers"></div>
+      <div class="vdiv"></div>
+      <button class="btn btn-add" id="btnNext" onclick="addNext()">+ Add Next</button>
+      <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+      <div class="vdiv"></div>
+      <button class="btn btn-history" id="btnUndo" onclick="undo()" disabled title="Undo (Ctrl+Z)">↩</button>
+      <span class="step-counter" id="stepCounter">—</span>
+      <button class="btn btn-history" id="btnRedo" onclick="redo()" disabled title="Redo (Ctrl+Y)">↪</button>
+    </div>
+  </div>
+
+  <!-- PAGE LAYOUT: main content + sidebar side by side -->
+  <div class="page-layout">
+    <div class="main-content">
+
+      <!-- STATS -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat">
+          <span class="stat-k">Leaves</span>
+          <span class="stat-v" id="sLeaves">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">Depth</span>
+          <span class="stat-v" id="sDepth">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">Total nodes</span>
+          <span class="stat-v" id="sTotal">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">Root</span>
+          <span class="stat-v mono" id="sRoot">—</span>
+        </div>
+      </div>
+
+      <!-- TREE -->
+      <div class="tree-section" id="treeSection">
+        <div class="empty" id="emptyState">
+          <div class="empty-glyph">⬡⬡⬡</div>
+          <div class="empty-h">No data yet</div>
+          <div class="empty-p">click "add next" or select a value chip above</div>
+        </div>
+        <div class="tree-wrap" id="treeWrap" style="display:none">
+          <svg id="treeSvg"></svg>
+        </div>
+      </div>
+
+      <!-- RECEIPTS -->
+      <div class="receipts" id="receipts">
+        <div class="receipts-hd">
+          <span class="receipts-title">Merkle Receipts</span>
+          <span class="receipts-hint">— hover a row to highlight the inclusion proof in the tree</span>
+        </div>
+        <div class="receipt-list" id="receiptList"></div>
+      </div>
+
+      <!-- FOOTER (sticky at bottom of main content) -->
+      <footer class="footer">
+        <span class="footer-brand">Vconic<span>·</span></span>
+        <span>© 2025 Strolid Inc. · <a href="mailto:pavan.kumar@strolid.com">Pavan Kumar</a></span>
+      </footer>
+
+    </div><!-- /.main-content -->
+
+    <!-- SIDEBAR (pushes main content left when open) -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-hd">
+        <div class="sidebar-hd-left">
+          <span class="insp-title">Node Inspector</span>
+          <span class="insp-badge leaf" id="inspBadge">leaf</span>
+          <span class="insp-node-id" id="inspNodeId"></span>
+        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+      </div>
+      <div class="sidebar-body">
+        <div class="deriv-box">
+          <div class="deriv-label">Hash Derivation</div>
+          <div class="deriv-formula" id="derivFormula"></div>
+        </div>
+        <div class="hist-section" id="histSection">
+          <div class="hist-label">Inclusion Proof History — how the receipt evolved as leaves were added</div>
+          <div class="hist-list" id="histList"></div>
+        </div>
+      </div>
+    </div><!-- /.sidebar -->
+
+  </div><!-- /.page-layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const LETTERS  = ['a','b','c','d','e','f','g','h'];
+const NUMBERS  = ['1','2','3','4','5','6','7','8'];
+const PRESETS  = [...LETTERS, ...NUMBERS];
+
+const NODE_W   = 130;
+const NODE_H   = 36;
+const NODE_GAP = 24;
+const LEVEL_H  = 90;
+const PAD      = 24;
+
+// ═══════════════════════════════════════════════════════════
+// COLOR PALETTES  (dark / light mode)
+// ═══════════════════════════════════════════════════════════
+const DARK = {
+  hlLeaf: { fill:'#92400e', stroke:'#f59e0b', text:'#fef3c7' },
+  sib:    { fill:'#14532d', stroke:'#22c55e', text:'#bbf7d0' },
+  path:   { fill:'#713f12', stroke:'#d97706', text:'#fef3c7' },
+  root:   { fill:'#3730a3', stroke:'#818cf8', text:'#e0e7ff' },
+  leaf:   { fill:'#0f4c75', stroke:'#0ea5e9', text:'#bae6fd' },
+  int:    { fill:'#1e3a5f', stroke:'#3b82f6', text:'#bfdbfe' },
+  edge:'#1e2d4a', edgeHL:'#f59e0b', leafLbl:'#38bdf8', rootLbl:'#818cf8',
+};
+const LIGHT = {
+  hlLeaf: { fill:'#fef3c7', stroke:'#d97706', text:'#78350f' },
+  sib:    { fill:'#dcfce7', stroke:'#16a34a', text:'#14532d' },
+  path:   { fill:'#fde68a', stroke:'#b45309', text:'#451a03' },
+  root:   { fill:'#ede9fe', stroke:'#7c3aed', text:'#3b0764' },
+  leaf:   { fill:'#e0f2fe', stroke:'#0284c7', text:'#0c4a6e' },
+  int:    { fill:'#dbeafe', stroke:'#2563eb', text:'#1e3a5f' },
+  edge:'#c2cedf', edgeHL:'#d97706', leafLbl:'#0369a1', rootLbl:'#6d28d9',
+};
+function cl() {
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? LIGHT : DARK;
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let items       = [];   // added values in order
+let tree        = [];   // tree[0]=root level … tree[last]=leaf level
+let positions   = [];   // positions[levelIdx][nodeIdx] = {x,y}
+let activeLeaf  = -1;   // hovered receipt row → leaf index
+let activeSib   = null; // hovered sibling chip → {levelIdx, nodeIdx}
+let history     = [];   // [{items:[...], tree:[...]}] snapshot after each addItem
+let historyIdx  = -1;  // current position in history (-1 = empty state)
+let histHighlight = null; // set when hovering a history row in the sidebar
+
+// ═══════════════════════════════════════════════════════════
+// SHA-256
+// ═══════════════════════════════════════════════════════════
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUILD MERKLE TREE
+// Returns: tree[0]=root … tree[N-1]=leaves
+// ═══════════════════════════════════════════════════════════
+async function buildTree(values) {
+  if (!values.length) return [];
+
+  // Leaves
+  let level = [];
+  for (const v of values) {
+    level.push({ hash: await sha256(v), data: v, isLeaf: true });
+  }
+
+  // Walk upward, collecting levels bottom→top, then reverse
+  const bottomUp = [level];
+  while (level.length > 1) {
+    const parent = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const L = level[i];
+      const R = level[i + 1] ?? level[i];          // duplicate last if odd
+      parent.push({ hash: await sha256(L.hash + R.hash), isLeaf: false });
+    }
+    level = parent;
+    bottomUp.push(level);
+  }
+
+  return bottomUp.reverse();  // index 0 = root
+}
+
+// ═══════════════════════════════════════════════════════════
+// MERKLE PROOF
+// Returns array of { hash, direction:'L'|'R', levelIdx, nodeIdx, isDuplicated }
+// ═══════════════════════════════════════════════════════════
+function getProof(t, leafIdx) {
+  if (t.length <= 1) return [];
+  const proof = [];
+  let idx = leafIdx;
+
+  for (let li = t.length - 1; li > 0; li--) {
+    const level   = t[li];
+    const sibIdx  = idx ^ 1;                               // XOR → sibling
+    const realSib = sibIdx < level.length ? sibIdx : idx;  // cap if odd
+
+    proof.push({
+      hash:         level[realSib].hash,
+      direction:    idx % 2 === 0 ? 'R' : 'L',
+      levelIdx:     li,
+      nodeIdx:      realSib,
+      isDuplicated: sibIdx >= level.length,
+    });
+
+    idx = Math.floor(idx / 2);
+  }
+  return proof;
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPUTE NODE POSITIONS
+// ═══════════════════════════════════════════════════════════
+function computePositions(t) {
+  if (!t.length) return [];
+  const leafLi    = t.length - 1;
+  const leafCount = t[leafLi].length;
+
+  const pos = t.map(l => l.map(() => ({})));
+
+  // Leaves: evenly spaced
+  for (let i = 0; i < leafCount; i++) {
+    pos[leafLi][i] = { x: i * (NODE_W + NODE_GAP), y: leafLi * LEVEL_H };
+  }
+
+  // Parents: centered over their children (bottom-up)
+  for (let li = leafLi - 1; li >= 0; li--) {
+    for (let i = 0; i < t[li].length; i++) {
+      const lx = pos[li + 1][2 * i].x;
+      const ri = Math.min(2 * i + 1, t[li + 1].length - 1);
+      const rx = pos[li + 1][ri].x;
+      pos[li][i] = { x: (lx + rx) / 2, y: li * LEVEL_H };
+    }
+  }
+
+  return pos;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HIGHLIGHT SETS
+// ═══════════════════════════════════════════════════════════
+function buildHighlightSets(leafIdx) {
+  // History-row hover overrides receipt-row hover
+  if (histHighlight) return histHighlight;
+
+  const leafSet = new Set();
+  const pathSet = new Set();
+  const sibSet  = new Set();
+
+  if (leafIdx < 0 || !tree.length) return { leafSet, pathSet, sibSet };
+
+  const leafLi = tree.length - 1;
+  leafSet.add(`${leafLi}:${leafIdx}`);
+
+  // Path from leaf to root
+  let idx = leafIdx;
+  for (let li = leafLi; li >= 0; li--) {
+    pathSet.add(`${li}:${idx}`);
+    idx = Math.floor(idx / 2);
+  }
+
+  // Sibling nodes from proof
+  getProof(tree, leafIdx).forEach(s => {
+    const k = `${s.levelIdx}:${s.nodeIdx}`;
+    if (!pathSet.has(k)) sibSet.add(k);
+  });
+
+  return { leafSet, pathSet, sibSet };
+}
+
+// ═══════════════════════════════════════════════════════════
+// SVG HELPER
+// ═══════════════════════════════════════════════════════════
+function svgEl(tag, attrs, text) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, String(v));
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER TREE SVG
+// ═══════════════════════════════════════════════════════════
+function renderTree() {
+  const svg   = document.getElementById('treeSvg');
+  const wrap  = document.getElementById('treeWrap');
+  const empty = document.getElementById('emptyState');
+
+  if (!tree.length) {
+    wrap.style.display  = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+
+  empty.style.display = 'none';
+  wrap.style.display  = 'flex';
+  svg.innerHTML = '';
+
+  positions = computePositions(tree);
+
+  const leafLi    = tree.length - 1;
+  const leafCount = tree[leafLi].length;
+  const svgW      = Math.max(NODE_W, leafCount * (NODE_W + NODE_GAP) - NODE_GAP);
+  const svgH      = tree.length * LEVEL_H + 26;  // 26px for leaf label
+
+  svg.setAttribute('width',   svgW + PAD * 2);
+  svg.setAttribute('height',  svgH + PAD * 2);
+  svg.setAttribute('viewBox', `${-PAD} ${-PAD} ${svgW + PAD*2} ${svgH + PAD*2}`);
+
+  const { leafSet, pathSet, sibSet } = buildHighlightSets(activeLeaf);
+  const C = cl();   // current color palette
+
+  // ── Defs: glow filter ──────────────────────────────────
+  const defs = svgEl('defs');
+  const flt  = svgEl('filter', { id:'glow', x:'-60%', y:'-60%', width:'220%', height:'220%' });
+  const blur = svgEl('feGaussianBlur', { stdDeviation:'3.5', result:'cb' });
+  const mg   = svgEl('feMerge');
+  mg.appendChild(svgEl('feMergeNode', { in:'cb' }));
+  mg.appendChild(svgEl('feMergeNode', { in:'SourceGraphic' }));
+  flt.appendChild(blur);
+  flt.appendChild(mg);
+  defs.appendChild(flt);
+  svg.appendChild(defs);
+
+  // ── Edges ──────────────────────────────────────────────
+  const edgeG = svgEl('g');
+  for (let li = 0; li < tree.length - 1; li++) {
+    for (let i = 0; i < tree[li].length; i++) {
+      const px = positions[li][i].x + NODE_W / 2;
+      const py = positions[li][i].y + NODE_H;
+      const pKey = `${li}:${i}`;
+
+      // Draw edge to left child
+      const lci = 2 * i;
+      if (lci < tree[li+1].length) {
+        const cx  = positions[li+1][lci].x + NODE_W / 2;
+        const cy  = positions[li+1][lci].y;
+        const isH = pathSet.has(pKey) && pathSet.has(`${li+1}:${lci}`);
+        edgeG.appendChild(svgEl('line', {
+          x1: px, y1: py, x2: cx, y2: cy,
+          stroke: isH ? C.edgeHL : C.edge,
+          'stroke-width': isH ? 2.2 : 1.5,
+          opacity: isH ? 1 : 0.6,
+        }));
+      }
+
+      // Draw edge to right child
+      const rci = 2 * i + 1;
+      if (rci < tree[li+1].length) {
+        const cx  = positions[li+1][rci].x + NODE_W / 2;
+        const cy  = positions[li+1][rci].y;
+        const isH = pathSet.has(pKey) && pathSet.has(`${li+1}:${rci}`);
+        edgeG.appendChild(svgEl('line', {
+          x1: px, y1: py, x2: cx, y2: cy,
+          stroke: isH ? C.edgeHL : C.edge,
+          'stroke-width': isH ? 2.2 : 1.5,
+          opacity: isH ? 1 : 0.6,
+        }));
+      }
+    }
+  }
+  svg.appendChild(edgeG);
+
+  // ── Nodes ──────────────────────────────────────────────
+  const nodeG = svgEl('g');
+  tree.forEach((level, li) => {
+    level.forEach((node, ni) => {
+      const pos = positions[li][ni];
+      const key = `${li}:${ni}`;
+
+      // Active sibling highlight (individual chip hover)
+      const isActiveSib = activeSib &&
+        activeSib.levelIdx === li && activeSib.nodeIdx === ni;
+
+      // Determine colors from current palette
+      let col;
+      if      (leafSet.has(key) || isActiveSib) col = C.hlLeaf;
+      else if (sibSet.has(key))                 col = C.sib;
+      else if (pathSet.has(key))                col = C.path;
+      else if (li === 0)                        col = C.root;
+      else if (node.isLeaf)                     col = C.leaf;
+      else                                      col = C.int;
+      const { fill, stroke, text: textColor } = col;
+
+      const glowing = leafSet.has(key) || sibSet.has(key) ||
+                      pathSet.has(key) || isActiveSib;
+
+      const g = svgEl('g', {
+        'class':    'node-g',
+        'data-key': key,
+        style:      `animation-delay:${li * 35 + ni * 18}ms; cursor:pointer`,
+      });
+
+      // Node rectangle
+      g.appendChild(svgEl('rect', {
+        x: pos.x, y: pos.y,
+        width: NODE_W, height: NODE_H,
+        rx: 5,
+        fill, stroke,
+        'stroke-width': glowing ? 1.5 : 1,
+        filter: glowing ? 'url(#glow)' : '',
+      }));
+
+      // Hash text
+      g.appendChild(svgEl('text', {
+        x: pos.x + NODE_W / 2,
+        y: pos.y + NODE_H / 2 + 4,
+        'text-anchor':   'middle',
+        fill:            textColor,
+        'font-size':     '10',
+        'font-family':   'JetBrains Mono, Fira Code, monospace',
+        'font-weight':   '500',
+        'pointer-events':'none',
+      }, node.hash.slice(0, 10) + '…'));
+
+      // Leaf data label below node
+      if (node.isLeaf && node.data != null) {
+        g.appendChild(svgEl('text', {
+          x: pos.x + NODE_W / 2,
+          y: pos.y + NODE_H + 16,
+          'text-anchor':   'middle',
+          fill:            C.leafLbl,
+          'font-size':     '12',
+          'font-family':   'JetBrains Mono, monospace',
+          'font-weight':   '700',
+          'pointer-events':'none',
+        }, `"${node.data}"`));
+      }
+
+      // ROOT label above root
+      if (li === 0) {
+        g.appendChild(svgEl('text', {
+          x: pos.x + NODE_W / 2,
+          y: pos.y - 6,
+          'text-anchor':   'middle',
+          fill:            C.rootLbl,
+          'font-size':     '9',
+          'font-family':   'JetBrains Mono, monospace',
+          'font-weight':   '600',
+          'letter-spacing':'1',
+          'pointer-events':'none',
+        }, 'ROOT'));
+      }
+
+      // Full-hash tooltip
+      const title = svgEl('title');
+      title.textContent =
+        (node.isLeaf ? `"${node.data}"\n` : '') + `sha256: ${node.hash}`;
+      g.appendChild(title);
+
+      nodeG.appendChild(g);
+    });
+  });
+
+  svg.appendChild(nodeG);
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UPDATE STATS BAR
+// ═══════════════════════════════════════════════════════════
+function updateStats() {
+  const bar = document.getElementById('statsBar');
+  if (!tree.length) { bar.style.display = 'none'; return; }
+
+  bar.style.display = 'flex';
+  const leafCount = tree[tree.length - 1].length;
+  let   total     = 0;
+  tree.forEach(l => total += l.length);
+
+  document.getElementById('sLeaves').textContent = leafCount;
+  document.getElementById('sDepth').textContent  = tree.length;
+  document.getElementById('sTotal').textContent  = total;
+  document.getElementById('sRoot').textContent   = tree[0][0].hash.slice(0, 18) + '…';
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER RECEIPTS
+// ═══════════════════════════════════════════════════════════
+function renderReceipts() {
+  const box  = document.getElementById('receipts');
+  const list = document.getElementById('receiptList');
+
+  if (!tree.length) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  list.innerHTML    = '';
+
+  const leafLi   = tree.length - 1;
+  const rootHash = tree[0][0].hash;
+
+  tree[leafLi].forEach((leaf, i) => {
+    const proof = getProof(tree, i);
+
+    const row = document.createElement('div');
+    row.className      = 'receipt-row';
+    row.dataset.leafIdx = i;
+
+    row.addEventListener('mouseenter', () => {
+      activeLeaf = i;
+      activeSib  = null;
+      renderTree();
+      document.querySelectorAll('.receipt-row').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+    });
+
+    row.addEventListener('mouseleave', () => {
+      activeLeaf = -1;
+      activeSib  = null;
+      renderTree();
+      row.classList.remove('active');
+    });
+
+    // Data badge
+    const dataBadge = mk('span', 'r-data', leaf.data);
+    row.appendChild(dataBadge);
+
+    addSpan(row, '→', 'r-arrow');
+
+    // Leaf hash chip
+    const lh = mk('code', 'hchip leaf', leaf.hash.slice(0, 12) + '…');
+    lh.title = leaf.hash;
+    row.appendChild(lh);
+
+    if (proof.length > 0) {
+      addSpan(row, '·', 'r-arrow');
+      addSpan(row, 'proof:', 'r-arrow');
+
+      proof.forEach((step, pi) => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'proof-step';
+
+        const dir = mk('span', 'proof-dir', `[${step.direction}]`);
+
+        const sib = mk('code', 'hchip sib', step.hash.slice(0, 10) + '…');
+        sib.title = (step.isDuplicated ? '(duplicated) ' : '') + step.hash;
+
+        sib.addEventListener('mouseenter', () => {
+          activeSib = { levelIdx: step.levelIdx, nodeIdx: step.nodeIdx };
+          sib.classList.add('hl-sib');
+          renderTree();
+        });
+        sib.addEventListener('mouseleave', () => {
+          activeSib = null;
+          sib.classList.remove('hl-sib');
+          renderTree();
+        });
+
+        stepEl.appendChild(dir);
+        stepEl.appendChild(sib);
+
+        if (pi < proof.length - 1) {
+          addSpan(stepEl, '→', 'r-arrow');
+        }
+
+        row.appendChild(stepEl);
+      });
+
+      addSpan(row, '=', 'r-arrow');
+
+      const rh = mk('code', 'hchip root', rootHash.slice(0, 10) + '…');
+      rh.title = rootHash;
+      row.appendChild(rh);
+    }
+
+    list.appendChild(row);
+  });
+}
+
+function mk(tag, cls, text) {
+  const el = document.createElement(tag);
+  el.className   = cls;
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+function addSpan(parent, text, cls) {
+  parent.appendChild(mk('span', cls, text));
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRESET CHIPS
+// ═══════════════════════════════════════════════════════════
+function initChips() {
+  const lc = document.getElementById('chipsLetters');
+  const nc = document.getElementById('chipsNumbers');
+  LETTERS.forEach(v => lc.appendChild(makeChip(v)));
+  NUMBERS.forEach(v => nc.appendChild(makeChip(v)));
+}
+
+function makeChip(value) {
+  const btn   = document.createElement('button');
+  btn.id       = `chip-${value}`;
+  btn.className = 'chip';
+  btn.textContent = `"${value}"`;
+  btn.title = `Add "${value}" to tree`;
+  btn.addEventListener('click', () => addItem(value));
+  return btn;
+}
+
+function syncChips() {
+  const nextUp = PRESETS.find(v => !items.includes(v));
+  PRESETS.forEach(v => {
+    const b = document.getElementById(`chip-${v}`);
+    if (!b) return;
+    const used = items.includes(v);
+    b.className = used ? 'chip used' : (v === nextUp ? 'chip next-up' : 'chip');
+    b.disabled  = used;
+  });
+  const allUsed = PRESETS.every(v => items.includes(v));
+  document.getElementById('btnNext').disabled = allUsed;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════
+async function addItem(value) {
+  if (items.includes(value)) return;
+  // If we're not at the end (rewound), truncate the future branch
+  if (historyIdx < history.length - 1) history.splice(historyIdx + 1);
+  items.push(value);
+  syncChips();
+  tree = await buildTree(items);
+  history.push({ items: [...items], tree });
+  historyIdx = history.length - 1;
+  activeLeaf = -1;
+  activeSib  = null;
+  renderTree();
+  renderReceipts();
+  syncUndoRedo();
+  // If sidebar is open for a leaf, live-refresh its history
+  if (sidebarLeafData !== null) {
+    const newLeafIdx = items.indexOf(sidebarLeafData);
+    if (newLeafIdx >= 0) showInspector(tree.length - 1, newLeafIdx);
+  }
+}
+
+function addNext() {
+  const next = PRESETS.find(v => !items.includes(v));
+  if (next) addItem(next);
+}
+
+function clearAll() {
+  items      = [];
+  tree       = [];
+  history    = [];
+  historyIdx = -1;
+  activeLeaf = -1;
+  activeSib  = null;
+  closeSidebar();
+  syncChips();
+  renderTree();
+  renderReceipts();
+  syncUndoRedo();
+  document.getElementById('statsBar').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// NODE INSPECTOR
+// ═══════════════════════════════════════════════════════════
+function showInspector(li, ni) {
+  if (!tree.length) return;
+
+  const badge      = document.getElementById('inspBadge');
+  const nodeId     = document.getElementById('inspNodeId');
+  const formula    = document.getElementById('derivFormula');
+  const histSec    = document.getElementById('histSection');
+  const histList   = document.getElementById('histList');
+
+  const node   = tree[li][ni];
+  const leafLi = tree.length - 1;
+  const isLeaf = li === leafLi;
+  const isRoot = li === 0;
+
+  // Track which leaf (if any) is shown so addItem can live-refresh
+  sidebarLeafData = isLeaf ? node.data : null;
+
+  // Badge
+  const badgeType = (isRoot && isLeaf) ? 'root' : isRoot ? 'root' : isLeaf ? 'leaf' : 'internal';
+  badge.textContent = isRoot && isLeaf ? 'root / leaf' : badgeType;
+  badge.className   = `insp-badge ${badgeType}`;
+  nodeId.textContent = isLeaf ? `"${node.data}"` : `depth ${li}, index ${ni}`;
+
+  // ── Hash derivation ────────────────────────────────────
+  formula.innerHTML = '';
+
+  if (isLeaf) {
+    // SHA256( "data" ) = hash
+    dfSpan(formula, 'SHA256', 'df-fn');
+    dfSpan(formula, '(', 'df-paren');
+    const d = mk('code', 'df-chip data', `"${node.data}"`);
+    d.title = `raw input: ${node.data}`;
+    formula.appendChild(d);
+    dfSpan(formula, ')', 'df-paren');
+    dfSpan(formula, '=', 'df-eq');
+    const r = mk('code', 'df-chip result', node.hash.slice(0, 16) + '…');
+    r.title = node.hash;
+    formula.appendChild(r);
+  } else {
+    // SHA256( leftHash ‖ rightHash ) = hash
+    const childLi  = li + 1;
+    const leftNi   = 2 * ni;
+    const rightNi  = 2 * ni + 1;
+    const leftNode = tree[childLi][leftNi];
+    const isDup    = rightNi >= tree[childLi].length;
+    const rightNode = isDup ? leftNode : tree[childLi][rightNi];
+
+    dfSpan(formula, 'SHA256', 'df-fn');
+    dfSpan(formula, '(', 'df-paren');
+
+    const lc = mk('code', 'df-chip child', leftNode.hash.slice(0, 10) + '…');
+    lc.title = `left child hash: ${leftNode.hash}`;
+    formula.appendChild(lc);
+
+    dfSpan(formula, '‖', 'df-cat');
+
+    const rc = mk('code', `df-chip ${isDup ? 'dup' : 'child'}`, rightNode.hash.slice(0, 10) + '…');
+    rc.title = isDup
+      ? `right child (duplicated from left — odd leaf count): ${rightNode.hash}`
+      : `right child hash: ${rightNode.hash}`;
+    formula.appendChild(rc);
+
+    dfSpan(formula, ')', 'df-paren');
+    dfSpan(formula, '=', 'df-eq');
+
+    const res = mk('code', 'df-chip result', node.hash.slice(0, 16) + '…');
+    res.title = node.hash;
+    formula.appendChild(res);
+
+    if (isDup) dfSpan(formula, '← right duplicates left (odd count)', 'df-note');
+  }
+
+  // ── Receipt history — leaves only ─────────────────────
+  if (!isLeaf) { histSec.style.display = 'none'; return; }
+
+  histSec.style.display = 'block';
+  histList.innerHTML = '';
+
+  // Build hash→key map for the CURRENT tree (to detect gone hashes)
+  const hashToKey = new Map();
+  tree.forEach((level, li) => level.forEach((n, ni) => hashToKey.set(n.hash, `${li}:${ni}`)));
+
+  history.forEach((snap, snapIdx) => {
+    const leafIdx = snap.items.indexOf(node.data);
+    if (leafIdx < 0) return;
+
+    const st       = snap.tree;
+    const stLeafLi = st.length - 1;
+    const leafHash = st[stLeafLi][leafIdx].hash;
+    const rootHash = st[0][0].hash;
+    const proof    = getProof(st, leafIdx);
+    const addedVal = snap.items[snap.items.length - 1];
+    const isCur    = snapIdx === history.length - 1;
+
+    const row = document.createElement('div');
+    row.className = `hist-row${isCur ? ' is-current' : ''}`;
+
+    const lbl = mk('div', 'hist-step-lbl',
+      `Step ${snapIdx + 1} · added "${addedVal}"${isCur ? ' ← current' : ''}`);
+    row.appendChild(lbl);
+
+    const chain = document.createElement('div');
+    chain.className = 'hist-chain';
+
+    addSpan(chain, `"${node.data}"`, 'hc-data');
+    addSpan(chain, '→', 'hc-arrow');
+
+    const lhPresent = hashToKey.has(leafHash);
+    const lh = mk('code', `hc-chip lh${lhPresent ? ' present' : ' gone'}`, leafHash.slice(0, 10) + '…');
+    lh.title = (lhPresent ? '' : '⚠ no longer in current tree — ') + leafHash;
+    chain.appendChild(lh);
+
+    if (proof.length === 0) {
+      addSpan(chain, '=', 'hc-arrow');
+      const rhPresent = hashToKey.has(rootHash);
+      const rh = mk('code', `hc-chip rhs${rhPresent ? ' present' : ' gone'}`, rootHash.slice(0, 10) + '…');
+      rh.title = (rhPresent ? '' : '⚠ superseded — ') + rootHash;
+      chain.appendChild(rh);
+      addSpan(chain, '(only leaf = root)', 'hc-dir');
+    } else {
+      proof.forEach((step, pi) => {
+        addSpan(chain, `[${step.direction}:`, 'hc-dir');
+        const sibPresent = hashToKey.has(step.hash);
+        const sh = mk('code', `hc-chip sh${sibPresent ? ' present' : ' gone'}`, step.hash.slice(0, 8) + '…');
+        sh.title = (sibPresent ? '' : '⚠ superseded — ') +
+                   (step.isDuplicated ? '(dup) ' : '') + step.hash;
+        chain.appendChild(sh);
+        addSpan(chain, ']', 'hc-dir');
+        if (pi < proof.length - 1) addSpan(chain, '→', 'hc-arrow');
+      });
+      addSpan(chain, '=', 'hc-arrow');
+      const rhPresent = hashToKey.has(rootHash);
+      const rh = mk('code', `hc-chip rh${rhPresent ? ' present' : ' gone'}`, rootHash.slice(0, 10) + '…');
+      rh.title = (rhPresent ? '' : '⚠ superseded — ') + rootHash;
+      chain.appendChild(rh);
+    }
+
+    row.appendChild(chain);
+
+    // Hover: highlight matching nodes in the current tree
+    row.addEventListener('mouseenter', () => {
+      histHighlight = buildHistHighlight(st, leafIdx, hashToKey);
+      renderTree();
+    });
+    row.addEventListener('mouseleave', () => {
+      histHighlight = null;
+      renderTree();
+    });
+
+    histList.appendChild(row);
+  });
+}
+
+// Build highlight sets for the current tree based on a historical proof.
+// Nodes whose hash still exists in the current tree are highlighted;
+// nodes whose hash is gone are not in the sets (chips show strikethrough in sidebar).
+function buildHistHighlight(snapTree, leafIdx, hashToKey) {
+  const leafSet = new Set();
+  const pathSet = new Set();
+  const sibSet  = new Set();
+
+  const snapLeafLi = snapTree.length - 1;
+
+  // Walk the proof path in the snapshot tree (leaf → root)
+  // and map each node's hash to its position in the CURRENT tree
+  let pidx = leafIdx;
+  for (let li = snapLeafLi; li >= 0; li--) {
+    const node = snapTree[li][pidx];
+    if (!node) break;
+    const curKey = hashToKey.get(node.hash);
+    if (curKey) {
+      if (li === snapLeafLi) leafSet.add(curKey);
+      else                   pathSet.add(curKey);
+    }
+    pidx = Math.floor(pidx / 2);
+  }
+
+  // Proof siblings (nodes beside the path)
+  getProof(snapTree, leafIdx).forEach(step => {
+    const curKey = hashToKey.get(step.hash);
+    if (curKey && !leafSet.has(curKey) && !pathSet.has(curKey))
+      sibSet.add(curKey);
+  });
+
+  return { leafSet, pathSet, sibSet };
+}
+
+function hideInspector() { closeSidebar(); }
+
+function dfSpan(parent, text, cls) {
+  const el = document.createElement('span');
+  el.className = cls;
+  el.textContent = text;
+  parent.appendChild(el);
+}
+
+// ═══════════════════════════════════════════════════════════
+// UNDO / REDO
+// ═══════════════════════════════════════════════════════════
+function restoreSnapshot(idx) {
+  if (idx < 0) {
+    items = [];
+    tree  = [];
+  } else {
+    items = [...history[idx].items];
+    tree  = history[idx].tree;
+  }
+  activeLeaf = -1;
+  activeSib  = null;
+  // Refresh sidebar if it was showing a leaf still present in the restored state
+  if (sidebarLeafData !== null) {
+    const leafIdx = items.indexOf(sidebarLeafData);
+    if (leafIdx >= 0 && tree.length) {
+      showInspector(tree.length - 1, leafIdx);
+    } else {
+      closeSidebar();
+    }
+  }
+  syncChips();
+  renderTree();
+  renderReceipts();
+  syncUndoRedo();
+}
+
+function undo() {
+  if (historyIdx < 0) return;
+  historyIdx--;
+  restoreSnapshot(historyIdx);
+}
+
+function redo() {
+  if (historyIdx >= history.length - 1) return;
+  historyIdx++;
+  restoreSnapshot(historyIdx);
+}
+
+function syncUndoRedo() {
+  const btnU = document.getElementById('btnUndo');
+  const btnR = document.getElementById('btnRedo');
+  const ctr  = document.getElementById('stepCounter');
+  btnU.disabled = historyIdx < 0;
+  btnR.disabled = historyIdx >= history.length - 1;
+  if (history.length === 0) {
+    ctr.innerHTML = '—';
+  } else {
+    ctr.innerHTML =
+      `<span class="step-cur">${historyIdx + 1}</span> / ${history.length}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIDEBAR OPEN / CLOSE
+// ═══════════════════════════════════════════════════════════
+let sidebarLeafData = null; // data value of leaf currently shown (null = internal/root)
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  sidebarLeafData  = null;
+  if (histHighlight) { histHighlight = null; renderTree(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+initChips();
+syncChips();
+syncUndoRedo();
+
+// Re-render when OS color scheme toggles
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  if (tree.length) renderTree();
+});
+
+// SVG event delegation — click a node to open the inspector sidebar
+const _svg = document.getElementById('treeSvg');
+_svg.addEventListener('click', (e) => {
+  const g = e.target.closest('.node-g');
+  if (!g || !tree.length) return;
+  const [li, ni] = g.dataset.key.split(':').map(Number);
+  showInspector(li, ni);
+  openSidebar();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeSidebar(); return; }
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+});
+</script>
+
+
+</body>
+</html>
